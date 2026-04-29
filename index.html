@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Súper Theremin</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ff0844">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0a0a0a;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        #start-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            z-index: 10;
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(10px);
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff0844, #ffb199);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: #ccc;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            max-width: 320px;
+        }
+
+        button.btn-primary {
+            background: linear-gradient(45deg, #ff0844, #ffb199);
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(255, 8, 68, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button.btn-primary:active {
+            transform: scale(0.95);
+            box-shadow: 0 5px 10px rgba(255, 8, 68, 0.2);
+        }
+
+        #app-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .instructions {
+            position: absolute;
+            top: 40px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+            text-align: center;
+            z-index: 3;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+
+        #info {
+            position: absolute;
+            bottom: 30px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+            z-index: 3;
+            pointer-events: none;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .touch-point {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 4;
+            box-shadow: 0 0 30px rgba(255,255,255,0.8), inset 0 0 20px rgba(255,255,255,0.5);
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        /* Loop Station UI */
+        #record-btn {
+            position: absolute;
+            bottom: 100px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #ff0844;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+        }
+
+        #record-btn .icon {
+            width: 20px;
+            height: 20px;
+            background: #ff0844;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        #record-btn.recording {
+            background: rgba(255,8,68,0.2);
+            box-shadow: 0 0 20px rgba(255,8,68,0.5);
+        }
+        #record-btn.recording .icon {
+            border-radius: 4px; /* Cambia a cuadrado de Stop */
+        }
+
+        #toast {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.9);
+            color: #000;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="particles-canvas"></canvas>
+
+    <div id="start-screen">
+        <h1>Súper Theremin</h1>
+        <p>Inclinación: Arriba/Abajo para la nota base.<br>Agita fuerte para cambiar de instrumento.<br>Usa el botón 🔴 para grabar un loop.</p>
+        <button id="start-btn" class="btn-primary">ENTRAR AL VIAJE</button>
+    </div>
+
+    <div id="app-screen">
+        <div class="instructions">↑ Agudo | ↓ Grave<br>Agitar: Cambiar Synth | 🔴 Grabar</div>
+        <div id="info">Nota: --<br>Filtro: -- Hz</div>
+        
+        <div id="record-btn"><div class="icon"></div></div>
+
+        <!-- Puntos visuales para los dedos -->
+        <div class="touch-point" id="tp-0" style="background: radial-gradient(circle, #fff, #ff0844);"></div>
+        <div class="touch-point" id="tp-1" style="background: radial-gradient(circle, #fff, #00f2fe);"></div>
+        <div class="touch-point" id="tp-2" style="background: radial-gradient(circle, #fff, #f6d365);"></div>
+    </div>
+
+    <div id="toast">Instrumento Cambiado</div>
+
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        // --- SISTEMA DE PARTÍCULAS Y OSCILOSCOPIO (CANVAS) ---
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        let analyserDataArray = null;
+
+        class Particle {
+            constructor(x, y, hue) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 5 + 2;
+                this.speedX = (Math.random() - 0.5) * 10;
+                this.speedY = (Math.random() - 0.5) * 10;
+                this.color = `hsl(${hue}, 100%, 60%)`;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.02 + 0.01;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= this.decay;
+                this.size *= 0.95;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function createExplosion(x, y, hue, amount = 20) {
+            for (let i = 0; i < amount; i++) {
+                particles.push(new Particle(x, y, hue));
+            }
+        }
+
+        function animateCanvas() {
+            ctx.fillStyle = 'rgba(10, 10, 10, 0.2)'; // Efecto estela
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar Osciloscopio
+            if (analyser && analyserDataArray) {
+                analyser.getByteTimeDomainData(analyserDataArray);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = `hsl(${currentHue}, 100%, 50%)`;
+                ctx.beginPath();
+
+                const sliceWidth = canvas.width * 1.0 / analyserDataArray.length;
+                let x = 0;
+
+                for (let i = 0; i < analyserDataArray.length; i++) {
+                    const v = analyserDataArray[i] / 128.0;
+                    const y = v * canvas.height / 2;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+
+                    x += sliceWidth;
+                }
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+            }
+
+            // Dibujar Partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].life <= 0) particles.splice(i, 1);
+            }
+            requestAnimationFrame(animateCanvas);
+        }
+        animateCanvas();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+
+        // --- SINTETIZADOR WEB AUDIO API ---
+        let audioCtx;
+        let masterGain;
+        let filterNode;
+        let delayNode;
+        let analyser;
+        
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+        let loopAudioElement = new Audio();
+        loopAudioElement.loop = true;
+
+        const pentatonicScale = [48, 51, 53, 55, 58, 60, 63, 65, 67, 70, 72, 75, 77, 79, 82, 84, 87, 89, 91, 94];
+        const notesNames = ['Do', 'Mib', 'Fa', 'Sol', 'Sib'];
+        const oscTypes = ['sawtooth', 'sine', 'square', 'triangle'];
+        let currentOscTypeIndex = 0;
+
+        function midiToFreq(midi) {
+            return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+
+        class Voice {
+            constructor() {
+                this.osc = audioCtx.createOscillator();
+                this.gain = audioCtx.createGain();
+                this.osc.type = oscTypes[currentOscTypeIndex]; 
+                
+                this.osc.connect(this.gain);
+                this.gain.connect(filterNode);
+                
+                this.gain.gain.value = 0;
+                this.osc.start();
+                this.active = false;
+            }
+
+            play(freq) {
+                this.osc.type = oscTypes[currentOscTypeIndex]; // Actualizar tipo si cambió
+                this.osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.02);
+                this.gain.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.05);
+                this.active = true;
+            }
+
+            stop() {
+                this.gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+                this.active = false;
+            }
+        }
+
+        let voices = [];
+        let baseMidiIndex = 10;
+        let currentHue = 200;
+
+        const startBtn = document.getElementById('start-btn');
+        const startScreen = document.getElementById('start-screen');
+        const appScreen = document.getElementById('app-screen');
+        const info = document.getElementById('info');
+        const toast = document.getElementById('toast');
+        const recordBtn = document.getElementById('record-btn');
+        const touchPointsUI = [
+            document.getElementById('tp-0'),
+            document.getElementById('tp-1'),
+            document.getElementById('tp-2')
+        ];
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                const docEl = document.documentElement;
+                if (docEl.requestFullscreen) {
+                    docEl.requestFullscreen().catch(e => console.log(e));
+                } else if (docEl.webkitRequestFullscreen) {
+                    docEl.webkitRequestFullscreen();
+                }
+            } catch(err) { console.log("Fullscreen error:", err); }
+
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission !== 'granted') alert("Permiso de sensores denegado. Solo podrás tocar la pantalla.");
+                } catch (e) { 
+                    console.error("Error sensores:", e); 
+                    // Falla por falta de HTTPS en iOS, pero permitimos continuar
+                }
+            }
+            
+            // Iniciar siempre, así al menos funciona el táctil
+            initAudio();
+        });
+
+        function initAudio() {
+            startScreen.style.display = 'none';
+            appScreen.style.display = 'flex';
+
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Efectos y Nodos Principales
+            filterNode = audioCtx.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            filterNode.frequency.value = 2000;
+            filterNode.Q.value = 5;
+
+            delayNode = audioCtx.createDelay();
+            delayNode.delayTime.value = 0.3;
+            const delayFeedback = audioCtx.createGain();
+            delayFeedback.gain.value = 0.4;
+            delayNode.connect(delayFeedback);
+            delayFeedback.connect(delayNode);
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.8;
+
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 2048;
+            analyserDataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            // Enrutamiento Master
+            filterNode.connect(masterGain);
+            filterNode.connect(delayNode);
+            delayNode.connect(masterGain);
+            masterGain.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            // Loop Station Setup (Capturar el Master Output)
+            const destNode = audioCtx.createMediaStreamDestination();
+            masterGain.connect(destNode);
+            mediaRecorder = new MediaRecorder(destNode.stream);
+            
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                recordedChunks = [];
+                const audioURL = window.URL.createObjectURL(blob);
+                loopAudioElement.src = audioURL;
+                loopAudioElement.play();
+                showToast("Loop Reproduciendo 🔁");
+            };
+
+            for(let i=0; i<3; i++) voices.push(new Voice());
+
+            // Eventos
+            window.addEventListener('deviceorientation', handleOrientation);
+            window.addEventListener('devicemotion', handleMotion);
+            
+            appScreen.addEventListener('touchstart', handleTouch, {passive: false});
+            appScreen.addEventListener('touchmove', handleTouch, {passive: false});
+            appScreen.addEventListener('touchend', handleTouchEnd, {passive: false});
+            appScreen.addEventListener('touchcancel', handleTouchEnd, {passive: false});
+            
+            // Control Loop Station
+            recordBtn.addEventListener('touchstart', toggleRecord);
+        }
+
+        // --- LÓGICA DE CONTROL ---
+
+        function toggleRecord(e) {
+            e.stopPropagation();
+            if (!isRecording) {
+                recordedChunks = [];
+                mediaRecorder.start();
+                recordBtn.classList.add('recording');
+                isRecording = true;
+                if(loopAudioElement) loopAudioElement.pause(); // Stop old loop
+                showToast("Grabando... 🔴");
+            } else {
+                mediaRecorder.stop();
+                recordBtn.classList.remove('recording');
+                isRecording = false;
+            }
+        }
+
+        function showToast(msg) {
+            toast.innerText = msg;
+            toast.style.opacity = 1;
+            setTimeout(() => { toast.style.opacity = 0; }, 1500);
+        }
+
+        let lastShakeTime = 0;
+        function handleMotion(event) {
+            const acc = event.accelerationIncludingGravity;
+            if(!acc) return;
+            const magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
+            
+            // Umbral de fuerza (Gravedad = ~9.8, Sacudida > 18)
+            if (magnitude > 18) {
+                const now = Date.now();
+                if (now - lastShakeTime > 1000) { // Cooldown 1 seg
+                    lastShakeTime = now;
+                    currentOscTypeIndex = (currentOscTypeIndex + 1) % oscTypes.length;
+                    
+                    // Actualizar voces activas inmediatamente
+                    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                    showToast(`Instrumento: ${oscTypes[currentOscTypeIndex].toUpperCase()}`);
+                }
+            }
+        }
+
+        function handleOrientation(event) {
+            let pitch = event.beta;
+            let roll = event.gamma;
+
+            if (pitch > 90) pitch = 90;
+            if (pitch < -90) pitch = -90;
+            
+            let normalizedPitch = (pitch + 45) / 90; 
+            if (normalizedPitch < 0) normalizedPitch = 0;
+            if (normalizedPitch > 1) normalizedPitch = 1;
+            
+            let targetIndex = Math.floor((1 - normalizedPitch) * (pentatonicScale.length - 1));
+            
+            if (targetIndex !== baseMidiIndex) {
+                baseMidiIndex = targetIndex;
+                currentHue = (baseMidiIndex / pentatonicScale.length) * 360;
+                updateActiveVoices();
+                createExplosion(window.innerWidth / 2, window.innerHeight / 2, currentHue, 40);
+            }
+
+            let vol = (roll + 45) / 90;
+            if (vol < 0) vol = 0;
+            if (vol > 1) vol = 1;
+            masterGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.1);
+        }
+
+        let activeTouches = 0;
+
+        function handleTouch(e) {
+            e.preventDefault();
+            activeTouches = e.touches.length;
+            let avgY = 0;
+            
+            for(let i=0; i<e.touches.length; i++) {
+                avgY += e.touches[i].clientY;
+                if (i < 3) {
+                    touchPointsUI[i].style.opacity = 1;
+                    touchPointsUI[i].style.left = e.touches[i].clientX + 'px';
+                    touchPointsUI[i].style.top = e.touches[i].clientY + 'px';
+                    if (Math.random() > 0.5) {
+                         createExplosion(e.touches[i].clientX, e.touches[i].clientY, currentHue, 2);
+                    }
+                }
+            }
+            if(e.touches.length > 0) avgY /= e.touches.length;
+
+            const filterFreq = 100 * Math.pow(5000 / 100, 1 - (avgY / window.innerHeight));
+            if(e.touches.length > 0) filterNode.frequency.setTargetAtTime(filterFreq, audioCtx.currentTime, 0.05);
+
+            updateActiveVoices();
+            updateUI(filterFreq);
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            activeTouches = e.touches.length;
+            for(let i = activeTouches; i < 3; i++) {
+                touchPointsUI[i].style.opacity = 0;
+            }
+            updateActiveVoices();
+            if(activeTouches === 0) updateUI(filterNode.frequency.value);
+        }
+
+        function updateActiveVoices() {
+            if (activeTouches === 0) {
+                voices.forEach(v => v.stop());
+                return;
+            }
+            if (activeTouches >= 1) voices[0].play(midiToFreq(pentatonicScale[baseMidiIndex]));
+            else voices[0].stop();
+
+            if (activeTouches >= 2) {
+                let thirdIndex = Math.min(baseMidiIndex + 2, pentatonicScale.length - 1);
+                voices[1].play(midiToFreq(pentatonicScale[thirdIndex]));
+            } else voices[1].stop();
+
+            if (activeTouches >= 3) {
+                let fifthIndex = Math.min(baseMidiIndex + 4, pentatonicScale.length - 1);
+                voices[2].play(midiToFreq(pentatonicScale[fifthIndex]));
+            } else voices[2].stop();
+        }
+
+        function updateUI(filterFreq) {
+            if (activeTouches === 0) {
+                info.innerHTML = `Silencio...`;
+                return;
+            }
+            let notesPlaying = [notesNames[baseMidiIndex % 5]];
+            if(activeTouches >= 2) notesPlaying.push(notesNames[(baseMidiIndex + 2) % 5]);
+            if(activeTouches >= 3) notesPlaying.push(notesNames[(baseMidiIndex + 4) % 5]);
+            info.innerHTML = `Notas: ${notesPlaying.join(' + ')}<br>Filtro: ${Math.round(filterFreq)}Hz`;
+        }
+    </script>
+</body>
+</html>
