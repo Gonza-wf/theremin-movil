@@ -265,6 +265,18 @@
             </div>
             
             <div class="menu-section">
+                <div class="menu-title">Efectos de Audio</div>
+                <div class="toggle-row">
+                    <span>Efecto Eco</span>
+                    <label class="switch"><input type="checkbox" id="toggle-echo" checked><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <span>Autotune (Escala)</span>
+                    <label class="switch"><input type="checkbox" id="toggle-autotune" checked><span class="slider"></span></label>
+                </div>
+            </div>
+
+            <div class="menu-section">
                 <div class="menu-title">Opciones Visuales</div>
                 <div class="toggle-row">
                     <span>Textos UI</span>
@@ -322,6 +334,8 @@
         let showUI = true;
         let showWave = true;
         let enableShake = true;
+        let enableEcho = true;
+        let enableAutotune = true;
         let isMenuOpen = false;
 
         class Particle {
@@ -408,6 +422,8 @@
         const toggleUI = document.getElementById('toggle-ui');
         const toggleWave = document.getElementById('toggle-wave');
         const toggleShake = document.getElementById('toggle-shake');
+        const toggleEcho = document.getElementById('toggle-echo');
+        const toggleAutotune = document.getElementById('toggle-autotune');
         const btnFullscreen = document.getElementById('btn-fullscreen');
         const instructions = document.querySelector('.instructions');
         const info = document.getElementById('info');
@@ -439,6 +455,14 @@
 
         toggleWave.addEventListener('change', (e) => { showWave = e.target.checked; });
         toggleShake.addEventListener('change', (e) => { enableShake = e.target.checked; });
+        toggleAutotune.addEventListener('change', (e) => { enableAutotune = e.target.checked; });
+
+        toggleEcho.addEventListener('change', (e) => { 
+            enableEcho = e.target.checked; 
+            if (delayInputGain) {
+                delayInputGain.gain.setTargetAtTime(enableEcho ? 1 : 0, audioCtx.currentTime, 0.05);
+            }
+        });
 
         btnFullscreen.addEventListener('click', () => {
             if (!document.fullscreenElement) {
@@ -457,6 +481,7 @@
         let masterGain;
         let filterNode;
         let delayNode;
+        let delayInputGain; // Nodo para controlar si el eco está activo
         let compressor;
         
         let mediaRecorder;
@@ -467,7 +492,17 @@
 
         const pentatonicScale = [48, 51, 53, 55, 58, 60, 63, 65, 67, 70, 72, 75, 77, 79, 82, 84, 87, 89, 91, 94];
         const notesNames = ['Do', 'Mib', 'Fa', 'Sol', 'Sib'];
-        const oscTypes = ['sawtooth', 'sine', 'square', 'triangle'];
+        
+        // Instrumentos Extendidos
+        const instruments = [
+            { name: 'Flauta', type: 'sine' },
+            { name: 'Sintetizador', type: 'sawtooth' },
+            { name: 'Retro 8-bit', type: 'square' },
+            { name: 'Suave', type: 'triangle' },
+            { name: 'Órgano', type: 'custom', real: [0, 1, 0.8, 0.6, 0.4, 0.2, 0.1], imag: [0, 0, 0, 0, 0, 0, 0] },
+            { name: 'Metálico', type: 'custom', real: [0, 1, 0, 0.5, 0, 0.2, 0, 0.1], imag: [0, 0, 0, 0, 0, 0, 0, 0] },
+            { name: 'Bajo', type: 'custom', real: [0, 1, 0.3, 0.1, 0, 0, 0], imag: [0, 0, 0, 0, 0, 0, 0] }
+        ];
         let currentOscTypeIndex = 0;
 
         function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
@@ -476,7 +511,13 @@
             constructor() {
                 this.osc = audioCtx.createOscillator();
                 this.gain = audioCtx.createGain();
-                this.osc.type = oscTypes[currentOscTypeIndex]; 
+                
+                let inst = instruments[currentOscTypeIndex];
+                if (inst.type === 'custom') {
+                    this.osc.setPeriodicWave(inst.wave);
+                } else {
+                    this.osc.type = inst.type;
+                }
                 
                 this.osc.connect(this.gain);
                 this.gain.connect(filterNode);
@@ -487,7 +528,14 @@
             }
 
             play(freq) {
-                this.osc.type = oscTypes[currentOscTypeIndex];
+                let inst = instruments[currentOscTypeIndex];
+                // Al cambiar de tipo, setPeriodicWave sobrescribe el type, y type sobrescribe setPeriodicWave
+                if (inst.type === 'custom') {
+                    this.osc.setPeriodicWave(inst.wave);
+                } else {
+                    this.osc.type = inst.type;
+                }
+                
                 this.osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.02);
                 this.gain.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.05);
                 this.active = true;
@@ -501,6 +549,7 @@
 
         let voices = [];
         let baseMidiIndex = 10;
+        let continuousRawMidi = 70; // Para uso sin Autotune
 
         const startBtn = document.getElementById('start-btn');
         const startScreen = document.getElementById('start-screen');
@@ -534,10 +583,21 @@
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
+            // Generar ondas personalizadas
+            for (let inst of instruments) {
+                if (inst.type === 'custom') {
+                    inst.wave = audioCtx.createPeriodicWave(new Float32Array(inst.real), new Float32Array(inst.imag));
+                }
+            }
+            
             filterNode = audioCtx.createBiquadFilter();
             filterNode.type = 'lowpass';
             filterNode.frequency.value = 2000;
             filterNode.Q.value = 5;
+
+            // Nodo de entrada para el Eco
+            delayInputGain = audioCtx.createGain();
+            delayInputGain.gain.value = 1; // 1 = Eco activado
 
             delayNode = audioCtx.createDelay();
             delayNode.delayTime.value = 0.3;
@@ -549,7 +609,7 @@
             masterGain = audioCtx.createGain();
             masterGain.gain.value = 0.8;
 
-            // CORRECCIÓN DE AUDIO: Compresor Dinámico para evitar distorsión (clipping) extrema
+            // Compresor Dinámico
             compressor = audioCtx.createDynamicsCompressor();
             compressor.threshold.value = -12;
             compressor.knee.value = 10;
@@ -561,9 +621,12 @@
             analyser.fftSize = 2048;
             analyserDataArray = new Uint8Array(analyser.frequencyBinCount);
 
-            // Routing: Filtro -> (Delay) -> Master -> Compresor -> Analizador -> Salida
+            // Routing
             filterNode.connect(masterGain);
-            filterNode.connect(delayNode);
+            
+            // Enrutamiento paralelo para el Eco
+            filterNode.connect(delayInputGain);
+            delayInputGain.connect(delayNode);
             delayNode.connect(masterGain);
             
             masterGain.connect(compressor);
@@ -572,7 +635,7 @@
 
             // Loop Station Output
             const destNode = audioCtx.createMediaStreamDestination();
-            masterGain.connect(destNode); // Grabamos lo que sale del master antes del compresor
+            masterGain.connect(destNode);
             mediaRecorder = new MediaRecorder(destNode.stream);
             
             mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
@@ -652,7 +715,7 @@
 
         let lastShakeTime = 0;
         function handleMotion(event) {
-            if (!enableShake) return; // Chequear toggle
+            if (!enableShake) return;
 
             const acc = event.accelerationIncludingGravity;
             if(!acc) return;
@@ -662,9 +725,20 @@
                 const now = Date.now();
                 if (now - lastShakeTime > 1000) { 
                     lastShakeTime = now;
-                    currentOscTypeIndex = (currentOscTypeIndex + 1) % oscTypes.length;
+                    currentOscTypeIndex = (currentOscTypeIndex + 1) % instruments.length;
                     if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
-                    showToast(`Instrumento: ${oscTypes[currentOscTypeIndex].toUpperCase()}`);
+                    showToast(`Inst: ${instruments[currentOscTypeIndex].name.toUpperCase()}`);
+                    
+                    // Actualizar en tiempo real si están tocando
+                    if (activeTouches > 0 && voices[0].active) {
+                        for(let i=0; i<3; i++) {
+                            if(voices[i].active) {
+                                let inst = instruments[currentOscTypeIndex];
+                                if (inst.type === 'custom') voices[i].osc.setPeriodicWave(inst.wave);
+                                else voices[i].osc.type = inst.type;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -680,13 +754,30 @@
             if (normalizedPitch < 0) normalizedPitch = 0;
             if (normalizedPitch > 1) normalizedPitch = 1;
             
-            let targetIndex = Math.floor((1 - normalizedPitch) * (pentatonicScale.length - 1));
-            
-            if (targetIndex !== baseMidiIndex) {
-                baseMidiIndex = targetIndex;
-                currentHue = (baseMidiIndex / pentatonicScale.length) * 360;
-                updateActiveVoices();
-                createExplosion(window.innerWidth / 2, window.innerHeight / 2, currentHue, 40);
+            if (enableAutotune) {
+                // Modo Cuantizado (Pentatónica)
+                let targetIndex = Math.floor((1 - normalizedPitch) * (pentatonicScale.length - 1));
+                if (targetIndex !== baseMidiIndex) {
+                    baseMidiIndex = targetIndex;
+                    currentHue = (baseMidiIndex / pentatonicScale.length) * 360;
+                    updateActiveVoices();
+                    createExplosion(window.innerWidth / 2, window.innerHeight / 2, currentHue, 40);
+                }
+            } else {
+                // Modo Analógico (Continuo entre 48 y 94)
+                continuousRawMidi = 48 + (1 - normalizedPitch) * (94 - 48);
+                currentHue = ((continuousRawMidi - 48) / (94 - 48)) * 360;
+                
+                if (activeTouches > 0) {
+                    voices[0].osc.frequency.setTargetAtTime(midiToFreq(continuousRawMidi), audioCtx.currentTime, 0.05);
+                    if (activeTouches >= 2) voices[1].osc.frequency.setTargetAtTime(midiToFreq(continuousRawMidi + 4), audioCtx.currentTime, 0.05);
+                    if (activeTouches >= 3) voices[2].osc.frequency.setTargetAtTime(midiToFreq(continuousRawMidi + 7), audioCtx.currentTime, 0.05);
+                    
+                    if (Math.random() > 0.95) { // Explosión esporádica
+                         createExplosion(window.innerWidth / 2, window.innerHeight / 2, currentHue, 5);
+                    }
+                }
+                if (filterNode) updateUI(filterNode.frequency.value);
             }
 
             let vol = (roll + 45) / 90;
@@ -698,8 +789,8 @@
         let activeTouches = 0;
 
         function handleTouch(e) {
-            if (isMenuOpen && settingsMenu.contains(e.target)) return; // No disparar notas si tocamos el menú
-            if (e.target === menuToggle) return; // No disparar si tocamos el botón de menú
+            if (isMenuOpen && settingsMenu.contains(e.target)) return;
+            if (e.target === menuToggle) return;
 
             e.preventDefault();
             activeTouches = e.touches.length;
@@ -708,7 +799,7 @@
             for(let i=0; i<e.touches.length; i++) {
                 avgY += e.touches[i].clientY;
                 if (i < 3) {
-                    touchPointsUI[i].style.opacity = 1; // Siempre mostrar los puntos de toque
+                    touchPointsUI[i].style.opacity = 1;
                     touchPointsUI[i].style.left = e.touches[i].clientX + 'px';
                     touchPointsUI[i].style.top = e.touches[i].clientY + 'px';
                     if (Math.random() > 0.5) {
@@ -741,18 +832,31 @@
                 voices.forEach(v => v.stop());
                 return;
             }
-            if (activeTouches >= 1) voices[0].play(midiToFreq(pentatonicScale[baseMidiIndex]));
-            else voices[0].stop();
+            
+            if (enableAutotune) {
+                if (activeTouches >= 1) voices[0].play(midiToFreq(pentatonicScale[baseMidiIndex]));
+                else voices[0].stop();
 
-            if (activeTouches >= 2) {
-                let thirdIndex = Math.min(baseMidiIndex + 2, pentatonicScale.length - 1);
-                voices[1].play(midiToFreq(pentatonicScale[thirdIndex]));
-            } else voices[1].stop();
+                if (activeTouches >= 2) {
+                    let thirdIndex = Math.min(baseMidiIndex + 2, pentatonicScale.length - 1);
+                    voices[1].play(midiToFreq(pentatonicScale[thirdIndex]));
+                } else voices[1].stop();
 
-            if (activeTouches >= 3) {
-                let fifthIndex = Math.min(baseMidiIndex + 4, pentatonicScale.length - 1);
-                voices[2].play(midiToFreq(pentatonicScale[fifthIndex]));
-            } else voices[2].stop();
+                if (activeTouches >= 3) {
+                    let fifthIndex = Math.min(baseMidiIndex + 4, pentatonicScale.length - 1);
+                    voices[2].play(midiToFreq(pentatonicScale[fifthIndex]));
+                } else voices[2].stop();
+            } else {
+                // Analog Continuous Mode
+                if (activeTouches >= 1) voices[0].play(midiToFreq(continuousRawMidi));
+                else voices[0].stop();
+
+                if (activeTouches >= 2) voices[1].play(midiToFreq(continuousRawMidi + 4));
+                else voices[1].stop();
+
+                if (activeTouches >= 3) voices[2].play(midiToFreq(continuousRawMidi + 7));
+                else voices[2].stop();
+            }
         }
 
         function updateUI(filterFreq) {
@@ -761,10 +865,15 @@
                 info.innerHTML = `Silencio...`;
                 return;
             }
-            let notesPlaying = [notesNames[baseMidiIndex % 5]];
-            if(activeTouches >= 2) notesPlaying.push(notesNames[(baseMidiIndex + 2) % 5]);
-            if(activeTouches >= 3) notesPlaying.push(notesNames[(baseMidiIndex + 4) % 5]);
-            info.innerHTML = `Notas: ${notesPlaying.join(' + ')}<br>Filtro: ${Math.round(filterFreq)}Hz`;
+            if (enableAutotune) {
+                let notesPlaying = [notesNames[baseMidiIndex % 5]];
+                if(activeTouches >= 2) notesPlaying.push(notesNames[(baseMidiIndex + 2) % 5]);
+                if(activeTouches >= 3) notesPlaying.push(notesNames[(baseMidiIndex + 4) % 5]);
+                info.innerHTML = `Notas: ${notesPlaying.join(' + ')}<br>Filtro: ${Math.round(filterFreq)}Hz`;
+            } else {
+                let currentFreq = midiToFreq(continuousRawMidi);
+                info.innerHTML = `Frec: ${Math.round(currentFreq)} Hz (Libre)<br>Filtro: ${Math.round(filterFreq)}Hz`;
+            }
         }
     </script>
 </body>
