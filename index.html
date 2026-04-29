@@ -412,12 +412,16 @@
         const instructions = document.querySelector('.instructions');
         const info = document.getElementById('info');
 
-        menuToggle.addEventListener('click', (e) => {
+        function toggleMenuEvent(e) {
+            e.preventDefault(); // Previene doble evento en móviles
             e.stopPropagation();
             isMenuOpen = !isMenuOpen;
             if (isMenuOpen) settingsMenu.classList.add('open');
             else settingsMenu.classList.remove('open');
-        });
+        }
+
+        menuToggle.addEventListener('touchstart', toggleMenuEvent, {passive: false});
+        menuToggle.addEventListener('click', toggleMenuEvent);
 
         // Cerrar menú al tocar fuera
         document.getElementById('app-screen').addEventListener('click', (e) => {
