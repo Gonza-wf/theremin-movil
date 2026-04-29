@@ -136,40 +136,93 @@
             transition: opacity 0.1s;
         }
 
-        /* Loop Station UI */
-        #record-btn {
+        /* Menu UI */
+        .menu-btn {
             position: absolute;
-            bottom: 100px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
             background: rgba(0,0,0,0.5);
-            border: 2px solid #ff0844;
+            border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 5;
+            font-size: 1.5rem;
             cursor: pointer;
+            z-index: 20;
             backdrop-filter: blur(5px);
-            transition: all 0.2s;
+            transition: background 0.2s;
+        }
+        .menu-btn:active { background: rgba(255,8,68,0.5); }
+
+        #settings-menu {
+            position: absolute;
+            top: 0;
+            right: -300px;
+            width: 250px;
+            height: 100%;
+            background: rgba(15, 15, 15, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+            transition: right 0.3s ease;
+            z-index: 15;
+            padding: 80px 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
         }
 
-        #record-btn .icon {
-            width: 20px;
-            height: 20px;
-            background: #ff0844;
-            border-radius: 50%;
-            transition: all 0.2s;
+        #settings-menu.open {
+            right: 0;
         }
 
-        #record-btn.recording {
-            background: rgba(255,8,68,0.2);
-            box-shadow: 0 0 20px rgba(255,8,68,0.5);
+        .menu-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
         }
-        #record-btn.recording .icon {
-            border-radius: 4px; /* Cambia a cuadrado de Stop */
+
+        .menu-title {
+            font-size: 0.9rem;
+            color: #ff0844;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
         }
+
+        .menu-btn-action {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-align: center;
+        }
+
+        .menu-btn-action:active { background: rgba(255,8,68,0.5); }
+        .menu-btn-action.active { background: rgba(255,8,68,0.3); border: 1px solid #ff0844; }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+
+        /* Switches */
+        .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #ff0844; }
+        input:checked + .slider:before { transform: translateX(20px); }
 
         #toast {
             position: absolute;
@@ -185,7 +238,7 @@
             opacity: 0;
             transition: opacity 0.3s;
             pointer-events: none;
-            z-index: 20;
+            z-index: 30;
         }
 
     </style>
@@ -196,16 +249,46 @@
 
     <div id="start-screen">
         <h1>Súper Theremin</h1>
-        <p>Inclinación: Arriba/Abajo para la nota base.<br>Agita fuerte para cambiar de instrumento.<br>Usa el botón 🔴 para grabar un loop.</p>
+        <p>Inclinación: Arriba/Abajo para la nota base.<br>Agita fuerte para cambiar de instrumento.<br>Abre el menú para grabar loops.</p>
         <button id="start-btn" class="btn-primary">ENTRAR AL VIAJE</button>
     </div>
 
     <div id="app-screen">
-        <div class="instructions">↑ Agudo | ↓ Grave<br>Agitar: Cambiar Synth | 🔴 Grabar</div>
+        <div class="menu-btn" id="menu-toggle">☰</div>
+
+        <div id="settings-menu">
+            <div class="menu-section">
+                <div class="menu-title">Loop Station</div>
+                <button id="btn-rec" class="menu-btn-action">🔴 Grabar</button>
+                <button id="btn-play-pause" class="menu-btn-action">⏸ Pausar Loop</button>
+                <button id="btn-clear-loop" class="menu-btn-action">🗑 Borrar Loop</button>
+            </div>
+            
+            <div class="menu-section">
+                <div class="menu-title">Opciones Visuales</div>
+                <div class="toggle-row">
+                    <span>Textos UI</span>
+                    <label class="switch"><input type="checkbox" id="toggle-ui" checked><span class="slider"></span></label>
+                </div>
+                <div class="toggle-row">
+                    <span>Onda Osciloscopio</span>
+                    <label class="switch"><input type="checkbox" id="toggle-wave" checked><span class="slider"></span></label>
+                </div>
+                <button id="btn-fullscreen" class="menu-btn-action">⛶ Pantalla Completa</button>
+            </div>
+
+            <div class="menu-section">
+                <div class="menu-title">Sensores</div>
+                <div class="toggle-row">
+                    <span>Agitar para Synth</span>
+                    <label class="switch"><input type="checkbox" id="toggle-shake" checked><span class="slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">↑ Agudo | ↓ Grave<br>Menú ☰ para Opciones</div>
         <div id="info">Nota: --<br>Filtro: -- Hz</div>
         
-        <div id="record-btn"><div class="icon"></div></div>
-
         <!-- Puntos visuales para los dedos -->
         <div class="touch-point" id="tp-0" style="background: radial-gradient(circle, #fff, #ff0844);"></div>
         <div class="touch-point" id="tp-1" style="background: radial-gradient(circle, #fff, #00f2fe);"></div>
@@ -233,6 +316,12 @@
         let particles = [];
         let analyserDataArray = null;
         let analyser = null;
+        
+        // Estado de Configuración
+        let showUI = true;
+        let showWave = true;
+        let enableShake = true;
+        let isMenuOpen = false;
 
         class Particle {
             constructor(x, y, hue) {
@@ -270,11 +359,11 @@
         }
 
         function animateCanvas() {
-            ctx.fillStyle = 'rgba(10, 10, 10, 0.2)'; // Efecto estela
+            ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Dibujar Osciloscopio
-            if (analyser && analyserDataArray) {
+            // Dibujar Osciloscopio (si está activo)
+            if (showWave && analyser && analyserDataArray) {
                 analyser.getByteTimeDomainData(analyserDataArray);
                 ctx.lineWidth = 3;
                 ctx.strokeStyle = `hsl(${currentHue}, 100%, 50%)`;
@@ -284,8 +373,10 @@
                 let x = 0;
 
                 for (let i = 0; i < analyserDataArray.length; i++) {
-                    const v = analyserDataArray[i] / 128.0;
-                    const y = v * canvas.height / 2;
+                    const v = analyserDataArray[i] / 128.0; // 0.0 a 2.0 (1.0 es el centro)
+                    
+                    // CORRECCIÓN DE ESTIRAMIENTO: Reducir amplitud a un tercio de la pantalla (evita salirse de los márgenes)
+                    const y = (v - 1) * (canvas.height / 3) + (canvas.height / 2);
 
                     if (i === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
@@ -296,7 +387,6 @@
                 ctx.stroke();
             }
 
-            // Dibujar Partículas
             for (let i = particles.length - 1; i >= 0; i--) {
                 particles[i].update();
                 particles[i].draw();
@@ -311,12 +401,58 @@
             canvas.height = window.innerHeight;
         });
 
+        // --- INTERFAZ DEL MENÚ ---
+        const menuToggle = document.getElementById('menu-toggle');
+        const settingsMenu = document.getElementById('settings-menu');
+        const toggleUI = document.getElementById('toggle-ui');
+        const toggleWave = document.getElementById('toggle-wave');
+        const toggleShake = document.getElementById('toggle-shake');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const instructions = document.querySelector('.instructions');
+        const info = document.getElementById('info');
+
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isMenuOpen = !isMenuOpen;
+            if (isMenuOpen) settingsMenu.classList.add('open');
+            else settingsMenu.classList.remove('open');
+        });
+
+        // Cerrar menú al tocar fuera
+        document.getElementById('app-screen').addEventListener('click', (e) => {
+            if (isMenuOpen && e.target !== settingsMenu && !settingsMenu.contains(e.target) && e.target !== menuToggle) {
+                isMenuOpen = false;
+                settingsMenu.classList.remove('open');
+            }
+        });
+
+        toggleUI.addEventListener('change', (e) => {
+            showUI = e.target.checked;
+            instructions.style.display = showUI ? 'block' : 'none';
+            info.style.display = showUI ? 'block' : 'none';
+        });
+
+        toggleWave.addEventListener('change', (e) => { showWave = e.target.checked; });
+        toggleShake.addEventListener('change', (e) => { enableShake = e.target.checked; });
+
+        btnFullscreen.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => console.log(err));
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+            // Cerrar menú al poner pantalla completa
+            isMenuOpen = false;
+            settingsMenu.classList.remove('open');
+        });
+
 
         // --- SINTETIZADOR WEB AUDIO API ---
         let audioCtx;
         let masterGain;
         let filterNode;
         let delayNode;
+        let compressor;
         
         let mediaRecorder;
         let recordedChunks = [];
@@ -329,9 +465,7 @@
         const oscTypes = ['sawtooth', 'sine', 'square', 'triangle'];
         let currentOscTypeIndex = 0;
 
-        function midiToFreq(midi) {
-            return 440 * Math.pow(2, (midi - 69) / 12);
-        }
+        function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
         class Voice {
             constructor() {
@@ -348,7 +482,7 @@
             }
 
             play(freq) {
-                this.osc.type = oscTypes[currentOscTypeIndex]; // Actualizar tipo si cambió
+                this.osc.type = oscTypes[currentOscTypeIndex];
                 this.osc.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.02);
                 this.gain.gain.setTargetAtTime(0.3, audioCtx.currentTime, 0.05);
                 this.active = true;
@@ -367,51 +501,35 @@
         const startBtn = document.getElementById('start-btn');
         const startScreen = document.getElementById('start-screen');
         const appScreen = document.getElementById('app-screen');
-        const info = document.getElementById('info');
         const toast = document.getElementById('toast');
-        const recordBtn = document.getElementById('record-btn');
         const touchPointsUI = [
-            document.getElementById('tp-0'),
-            document.getElementById('tp-1'),
-            document.getElementById('tp-2')
+            document.getElementById('tp-0'), document.getElementById('tp-1'), document.getElementById('tp-2')
         ];
 
         startBtn.addEventListener('click', () => {
-            // Ocultar pantalla de inicio INMEDIATAMENTE para que el botón no parezca roto
             startScreen.style.display = 'none';
             appScreen.style.display = 'flex';
 
             try {
                 const docEl = document.documentElement;
-                if (docEl.requestFullscreen) {
-                    docEl.requestFullscreen().catch(e => console.log(e));
-                } else if (docEl.webkitRequestFullscreen) {
-                    docEl.webkitRequestFullscreen();
-                }
-            } catch(err) { console.log("Fullscreen error:", err); }
+                if (docEl.requestFullscreen) docEl.requestFullscreen().catch(e => console.log(e));
+                else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+            } catch(err) { console.log(err); }
 
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
                     .then(permission => {
-                        if (permission !== 'granted') console.log("Permiso de sensores denegado.");
+                        if (permission !== 'granted') console.log("Permiso denegado.");
                     })
                     .catch(e => console.log("Error sensores:", e));
             }
             
-            try {
-                initAudio();
-            } catch (error) {
-                alert("Ocurrió un error al iniciar el audio: " + error.message);
-            }
+            try { initAudio(); } catch (error) { alert("Error al iniciar audio: " + error.message); }
         });
 
         function initAudio() {
-            startScreen.style.display = 'none';
-            appScreen.style.display = 'flex';
-
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Efectos y Nodos Principales
             filterNode = audioCtx.createBiquadFilter();
             filterNode.type = 'lowpass';
             filterNode.frequency.value = 2000;
@@ -427,25 +545,33 @@
             masterGain = audioCtx.createGain();
             masterGain.gain.value = 0.8;
 
+            // CORRECCIÓN DE AUDIO: Compresor Dinámico para evitar distorsión (clipping) extrema
+            compressor = audioCtx.createDynamicsCompressor();
+            compressor.threshold.value = -12;
+            compressor.knee.value = 10;
+            compressor.ratio.value = 12;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.25;
+
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 2048;
             analyserDataArray = new Uint8Array(analyser.frequencyBinCount);
 
-            // Enrutamiento Master
+            // Routing: Filtro -> (Delay) -> Master -> Compresor -> Analizador -> Salida
             filterNode.connect(masterGain);
             filterNode.connect(delayNode);
             delayNode.connect(masterGain);
-            masterGain.connect(analyser);
+            
+            masterGain.connect(compressor);
+            compressor.connect(analyser);
             analyser.connect(audioCtx.destination);
 
-            // Loop Station Setup (Capturar el Master Output)
+            // Loop Station Output
             const destNode = audioCtx.createMediaStreamDestination();
-            masterGain.connect(destNode);
+            masterGain.connect(destNode); // Grabamos lo que sale del master antes del compresor
             mediaRecorder = new MediaRecorder(destNode.stream);
             
-            mediaRecorder.ondataavailable = e => {
-                if (e.data.size > 0) recordedChunks.push(e.data);
-            };
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
             
             mediaRecorder.onstop = () => {
                 const blob = new Blob(recordedChunks, { type: 'audio/webm' });
@@ -453,12 +579,12 @@
                 const audioURL = window.URL.createObjectURL(blob);
                 loopAudioElement.src = audioURL;
                 loopAudioElement.play();
+                document.getElementById('btn-play-pause').innerText = "⏸ Pausar Loop";
                 showToast("Loop Reproduciendo 🔁");
             };
 
             for(let i=0; i<3; i++) voices.push(new Voice());
 
-            // Eventos
             window.addEventListener('deviceorientation', handleOrientation);
             window.addEventListener('devicemotion', handleMotion);
             
@@ -466,28 +592,53 @@
             appScreen.addEventListener('touchmove', handleTouch, {passive: false});
             appScreen.addEventListener('touchend', handleTouchEnd, {passive: false});
             appScreen.addEventListener('touchcancel', handleTouchEnd, {passive: false});
-            
-            // Control Loop Station
-            recordBtn.addEventListener('touchstart', toggleRecord);
         }
 
-        // --- LÓGICA DE CONTROL ---
+        // --- LÓGICA DE CONTROLES DEL MENÚ ---
+        const btnRec = document.getElementById('btn-rec');
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const btnClearLoop = document.getElementById('btn-clear-loop');
 
-        function toggleRecord(e) {
+        btnRec.addEventListener('click', (e) => {
             e.stopPropagation();
             if (!isRecording) {
                 recordedChunks = [];
                 mediaRecorder.start();
-                recordBtn.classList.add('recording');
+                btnRec.classList.add('active');
+                btnRec.innerText = "⏹ Detener Grabación";
                 isRecording = true;
-                if(loopAudioElement) loopAudioElement.pause(); // Stop old loop
+                if(loopAudioElement) loopAudioElement.pause();
                 showToast("Grabando... 🔴");
             } else {
                 mediaRecorder.stop();
-                recordBtn.classList.remove('recording');
+                btnRec.classList.remove('active');
+                btnRec.innerText = "🔴 Grabar";
                 isRecording = false;
             }
-        }
+        });
+
+        btnPlayPause.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (loopAudioElement.src) {
+                if (loopAudioElement.paused) {
+                    loopAudioElement.play();
+                    btnPlayPause.innerText = "⏸ Pausar Loop";
+                } else {
+                    loopAudioElement.pause();
+                    btnPlayPause.innerText = "▶️ Reproducir Loop";
+                }
+            } else {
+                showToast("No hay loop grabado");
+            }
+        });
+
+        btnClearLoop.addEventListener('click', (e) => {
+            e.stopPropagation();
+            loopAudioElement.pause();
+            loopAudioElement.src = '';
+            btnPlayPause.innerText = "⏸ Pausar Loop";
+            showToast("Loop borrado 🗑");
+        });
 
         function showToast(msg) {
             toast.innerText = msg;
@@ -497,18 +648,17 @@
 
         let lastShakeTime = 0;
         function handleMotion(event) {
+            if (!enableShake) return; // Chequear toggle
+
             const acc = event.accelerationIncludingGravity;
             if(!acc) return;
             const magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
             
-            // Umbral de fuerza (Gravedad = ~9.8, Sacudida > 18)
             if (magnitude > 18) {
                 const now = Date.now();
-                if (now - lastShakeTime > 1000) { // Cooldown 1 seg
+                if (now - lastShakeTime > 1000) { 
                     lastShakeTime = now;
                     currentOscTypeIndex = (currentOscTypeIndex + 1) % oscTypes.length;
-                    
-                    // Actualizar voces activas inmediatamente
                     if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
                     showToast(`Instrumento: ${oscTypes[currentOscTypeIndex].toUpperCase()}`);
                 }
@@ -538,12 +688,15 @@
             let vol = (roll + 45) / 90;
             if (vol < 0) vol = 0;
             if (vol > 1) vol = 1;
-            masterGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.1);
+            if (masterGain) masterGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.1);
         }
 
         let activeTouches = 0;
 
         function handleTouch(e) {
+            if (isMenuOpen && settingsMenu.contains(e.target)) return; // No disparar notas si tocamos el menú
+            if (e.target === menuToggle) return; // No disparar si tocamos el botón de menú
+
             e.preventDefault();
             activeTouches = e.touches.length;
             let avgY = 0;
@@ -551,7 +704,7 @@
             for(let i=0; i<e.touches.length; i++) {
                 avgY += e.touches[i].clientY;
                 if (i < 3) {
-                    touchPointsUI[i].style.opacity = 1;
+                    touchPointsUI[i].style.opacity = showUI ? 1 : 0; // Ocultar puntos si UI está oculta
                     touchPointsUI[i].style.left = e.touches[i].clientX + 'px';
                     touchPointsUI[i].style.top = e.touches[i].clientY + 'px';
                     if (Math.random() > 0.5) {
@@ -569,13 +722,14 @@
         }
 
         function handleTouchEnd(e) {
+            if (isMenuOpen && settingsMenu.contains(e.target)) return;
             e.preventDefault();
             activeTouches = e.touches.length;
             for(let i = activeTouches; i < 3; i++) {
                 touchPointsUI[i].style.opacity = 0;
             }
             updateActiveVoices();
-            if(activeTouches === 0) updateUI(filterNode.frequency.value);
+            if(activeTouches === 0 && filterNode) updateUI(filterNode.frequency.value);
         }
 
         function updateActiveVoices() {
@@ -598,6 +752,7 @@
         }
 
         function updateUI(filterFreq) {
+            if (!showUI) return;
             if (activeTouches === 0) {
                 info.innerHTML = `Silencio...`;
                 return;
