@@ -217,7 +217,11 @@
     <script>
         // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+            try {
+                navigator.serviceWorker.register('sw.js');
+            } catch (e) {
+                console.log("Service Worker bloqueado por falta de HTTPS local.");
+            }
         }
 
         // --- SISTEMA DE PARTÍCULAS Y OSCILOSCOPIO (CANVAS) ---
