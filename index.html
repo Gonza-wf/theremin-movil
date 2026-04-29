@@ -708,7 +708,7 @@
             for(let i=0; i<e.touches.length; i++) {
                 avgY += e.touches[i].clientY;
                 if (i < 3) {
-                    touchPointsUI[i].style.opacity = showUI ? 1 : 0; // Ocultar puntos si UI está oculta
+                    touchPointsUI[i].style.opacity = 1; // Siempre mostrar los puntos de toque
                     touchPointsUI[i].style.left = e.touches[i].clientX + 'px';
                     touchPointsUI[i].style.top = e.touches[i].clientY + 'px';
                     if (Math.random() > 0.5) {
