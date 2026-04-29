@@ -1,4 +1,4 @@
-const CACHE_NAME = 'theremin-v2';
+const CACHE_NAME = 'theremin-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,8 +7,7 @@ const urlsToCache = [
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
@@ -28,10 +27,8 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) return response;
-        return fetch(event.request);
-      })
+    // ESTRATEGIA NETWORK FIRST:
+    // Intenta ir a la red, si falla (sin internet), usa la caché.
+    fetch(event.request).catch(() => caches.match(event.request))
   );
 });
