@@ -232,6 +232,7 @@
 
         let particles = [];
         let analyserDataArray = null;
+        let analyser = null;
 
         class Particle {
             constructor(x, y, hue) {
@@ -316,7 +317,6 @@
         let masterGain;
         let filterNode;
         let delayNode;
-        let analyser;
         
         let mediaRecorder;
         let recordedChunks = [];
