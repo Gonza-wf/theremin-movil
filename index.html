@@ -376,7 +376,11 @@
             document.getElementById('tp-2')
         ];
 
-        startBtn.addEventListener('click', async () => {
+        startBtn.addEventListener('click', () => {
+            // Ocultar pantalla de inicio INMEDIATAMENTE para que el botón no parezca roto
+            startScreen.style.display = 'none';
+            appScreen.style.display = 'flex';
+
             try {
                 const docEl = document.documentElement;
                 if (docEl.requestFullscreen) {
@@ -387,17 +391,18 @@
             } catch(err) { console.log("Fullscreen error:", err); }
 
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission !== 'granted') alert("Permiso de sensores denegado. Solo podrás tocar la pantalla.");
-                } catch (e) { 
-                    console.error("Error sensores:", e); 
-                    // Falla por falta de HTTPS en iOS, pero permitimos continuar
-                }
+                DeviceOrientationEvent.requestPermission()
+                    .then(permission => {
+                        if (permission !== 'granted') console.log("Permiso de sensores denegado.");
+                    })
+                    .catch(e => console.log("Error sensores:", e));
             }
             
-            // Iniciar siempre, así al menos funciona el táctil
-            initAudio();
+            try {
+                initAudio();
+            } catch (error) {
+                alert("Ocurrió un error al iniciar el audio: " + error.message);
+            }
         });
 
         function initAudio() {
